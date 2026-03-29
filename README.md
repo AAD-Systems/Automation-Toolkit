@@ -5,6 +5,9 @@ Um toolkit modular para automatização de tarefas de segurança, reconhecimento
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Pages](https://img.shields.io/badge/GitHub-Pages-green.svg)](https://security-labor.github.io/Automation-Toolkit/)
+![Educational Purpose Only](https://img.shields.io/badge/purpose-educational-brightgreen)
+![Not For Production](https://img.shields.io/badge/production-unsafe-red)
+
 
 ## 📋 Índice
 
