@@ -445,15 +445,15 @@ O uso destas ferramentas para atividades maliciosas é estritamente proibido. Vo
 · ✅ Use apenas em sistemas que você possui autorização para testar
 · ✅ Respeite leis locais e internacionais
 · ✅ Pratique em ambientes controlados (VMs, CTF, labs)
-· ❌ Não utilize para ataques não autorizados
+· ❌ **Não utilize para ataques não autorizados**
 
-📚 Referências
+📚 **Referências**
 
 · Python Socket Programming
 · OWASP Testing Guide
 · Nmap Network Scanning
 
-📞 Contato
+📞 **Contato**
 
 URSA UNIVERSITY - @ursa_university - suporteursauniversity.tech@gmail.com
 
@@ -461,7 +461,7 @@ Link do Projeto: https://github.com/seu-usuario/automation-toolkit
 
 ---
 
-⭐️ Dê uma estrela se este projeto foi útil!
+⭐️ **Dê uma estrela se este projeto foi útil!**
 
 ```
 ```
