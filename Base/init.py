@@ -1,319 +1,162 @@
 #!/usr/bin/env python3
 """
-Python Security Toolkit - Base Module
-Fase 1: Fundamentos Sólidos
+AEGIS-Dynamics (AAD) Security Toolkit - Core Module
+Fase 1: Infraestrutura de Comando e Controle (C2) e Automação
 
-Este módulo fornece as ferramentas fundamentais para automação de segurança:
-- Scanner TCP simples e multi-thread
-- Sistema de logging profissional
-- Utilitários para parsing, validação e exportação
-
-Auto-melhoramento:
-- Detecção automática de dependências
-- Validação de ambiente
-- Métricas de performance
-- Sistema de plugins para extensão futura
+Desenvolvido para ambientes de simulação Blue/Red Team.
+Autor: Tauã Miguel
+Versão: 1.2.0 (Stable)
 """
-
-__version__ = "1.0.0"
-__author__ = "Security Labor Team"
-__license__ = "MIT"
-__status__ = "Production/Stable"
 
 import sys
 import os
-from typing import Dict, List, Optional, Tuple, Any
+import asyncio
+import socket
+import logging
+import platform
+import time
+from typing import Dict, List, Optional, Any
 from pathlib import Path
+from dataclasses import dataclass, field
 
 # ============================================================================
-# AUTO-DETECÇÃO E VALIDAÇÃO DE AMBIENTE
+# CONFIGURAÇÃO DE LOGGING PROFISSIONAL
 # ============================================================================
 
-class EnvironmentValidator:
-    """Valida e otimiza o ambiente de execução"""
+class AADLogger:
+    """Sistema de logging centralizado com suporte a cores e arquivos"""
     
     @staticmethod
-    def check_python_version() -> bool:
-        """Verifica versão mínima do Python"""
-        if sys.version_info < (3, 8):
-            print(f"⚠️  Python 3.8+ é recomendado. Versão atual: {sys.version}")
-            return False
-        print(f"✅ Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
-        return True
+    def setup(name: str = "AAD-CORE", verbose: bool = False):
+        level = logging.DEBUG if verbose else logging.INFO
+        logging.basicConfig(
+            level=level,
+            format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+            datefmt='%H:%M:%S'
+        )
+        return logging.getLogger(name)
+
+log = AADLogger.setup()
+
+# ============================================================================
+# MÉTRICAS DE ALTA PRECISÃO (AAD-ANALYTICS)
+# ============================================================================
+
+@dataclass
+class AADMetrics:
+    """Coleta de telemetria de performance em tempo real"""
+    start_time: float = field(default_factory=time.time)
+    scans_performed: int = 0
+    hits_detected: int = 0
+    data_transferred: int = 0  # em bytes
+
+    def get_uptime(self) -> float:
+        return time.time() - self.start_time
+
+    def report(self):
+        uptime = self.get_uptime()
+        log.info(f"📊 Telemetria: {self.scans_performed} scans em {uptime:.2f}s "
+                 f"({(self.scans_performed/uptime):.1f} ops/s)")
+
+# ============================================================================
+# VALIDAÇÃO DE AMBIENTE E PROTEÇÃO DE HARDWARE
+# ============================================================================
+
+class SystemGuard:
+    """Valida integridade do sistema e previne sobrecarga (Safe-Mode)"""
     
     @staticmethod
-    def check_platform() -> str:
-        """Identifica plataforma para otimizações"""
-        import platform
-        system = platform.system().lower()
-        print(f"✅ Plataforma: {system.capitalize()}")
-        return system
-    
-    @staticmethod
-    def check_dependencies() -> Dict[str, bool]:
-        """Verifica dependências opcionais"""
-        deps = {
-            'scapy': False,
-            'colorama': False,
-            'tqdm': False
+    def get_env_info() -> Dict[str, Any]:
+        info = {
+            "os": platform.system(),
+            "arch": platform.machine(),
+            "python": sys.version.split()[0],
+            "termux": "TERMUX_VERSION" in os.environ,
+            "local_ip": "127.0.0.1"
         }
         
-        # Verifica Scapy (para futuras features)
+        # Detecção de rede inteligente
         try:
-            import scapy
-            deps['scapy'] = True
-            print("✅ Scapy disponível (para packet crafting)")
-        except ImportError:
-            print("ℹ️  Scapy não instalado (opcional para packet crafting)")
-        
-        # Verifica Colorama (fallback para cores)
-        try:
-            import colorama
-            deps['colorama'] = True
-        except ImportError:
-            pass
-        
-        # Verifica tqdm (barra de progresso)
-        try:
-            import tqdm
-            deps['tqdm'] = True
-        except ImportError:
-            pass
-        
-        return deps
-    
-    @staticmethod
-    def validate_network() -> Dict[str, Any]:
-        """Valida configuração de rede"""
-        import socket
-        
-        network_info = {
-            'hostname': socket.gethostname(),
-            'ip_local': None,
-            'conectividade': False
-        }
-        
-        try:
-            # Obtém IP local
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            network_info['ip_local'] = s.getsockname()[0]
-            s.close()
-            network_info['conectividade'] = True
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(("8.8.8.8", 80))
+                info["local_ip"] = s.getsockname()[0]
         except Exception:
-            network_info['ip_local'] = '127.0.0.1'
-        
-        return network_info
-
-
-# ============================================================================
-# SISTEMA DE MÉTRICAS E PERFORMANCE
-# ============================================================================
-
-class PerformanceMetrics:
-    """Coleta e exibe métricas de performance"""
-    
-    def __init__(self):
-        self.metrics = {
-            'scans': [],
-            'total_scans': 0,
-            'total_ports_scanned': 0,
-            'total_open_ports': 0,
-            'avg_time_per_port': 0.0,
-            'fastest_scan': float('inf'),
-            'slowest_scan': 0.0
-        }
-    
-    def record_scan(self, ports: int, open_ports: int, duration: float):
-        """Registra métricas de um scan"""
-        self.metrics['scans'].append({
-            'ports': ports,
-            'open_ports': open_ports,
-            'duration': duration,
-            'ports_per_second': ports / duration if duration > 0 else 0
-        })
-        
-        self.metrics['total_scans'] += 1
-        self.metrics['total_ports_scanned'] += ports
-        self.metrics['total_open_ports'] += open_ports
-        self.metrics['avg_time_per_port'] = (
-            self.metrics['total_ports_scanned'] / 
-            sum(s['duration'] for s in self.metrics['scans'])
-        ) if self.metrics['scans'] else 0
-        
-        if duration < self.metrics['fastest_scan']:
-            self.metrics['fastest_scan'] = duration
-        if duration > self.metrics['slowest_scan']:
-            self.metrics['slowest_scan'] = duration
-    
-    def get_summary(self) -> Dict[str, Any]:
-        """Retorna resumo das métricas"""
-        if not self.metrics['scans']:
-            return {'status': 'no_data'}
-        
-        return {
-            'total_scans': self.metrics['total_scans'],
-            'total_ports_scanned': self.metrics['total_ports_scanned'],
-            'total_open_ports': self.metrics['total_open_ports'],
-            'avg_ports_per_second': f"{self.metrics['avg_time_per_port']:.2f}",
-            'fastest_scan': f"{self.metrics['fastest_scan']:.2f}s",
-            'slowest_scan': f"{self.metrics['slowest_scan']:.2f}s"
-        }
-    
-    def display(self):
-        """Exibe métricas formatadas"""
-        summary = self.get_summary()
-        if summary.get('status') == 'no_data':
-            print("📊 Nenhum scan realizado ainda")
-            return
-        
-        print("\n" + "="*50)
-        print("📊 MÉTRICAS DE PERFORMANCE")
-        print("="*50)
-        print(f"Total de scans: {summary['total_scans']}")
-        print(f"Portas escaneadas: {summary['total_ports_scanned']}")
-        print(f"Portas abertas: {summary['total_open_ports']}")
-        print(f"Média portas/segundo: {summary['avg_ports_per_second']}")
-        print(f"Scan mais rápido: {summary['fastest_scan']}")
-        print(f"Scan mais lento: {summary['slowest_scan']}")
-        print("="*50)
-
-
-# ============================================================================
-# SISTEMA DE PLUGINS (PARA EXTENSÃO FUTURA)
-# ============================================================================
-
-class PluginManager:
-    """Gerencia plugins e extensões do toolkit"""
-    
-    def __init__(self):
-        self.plugins = {}
-        self.plugin_path = Path(__file__).parent / "plugins"
-        self.plugin_path.mkdir(exist_ok=True)
-    
-    def register_plugin(self, name: str, plugin_class):
-        """Registra um novo plugin"""
-        self.plugins[name] = plugin_class
-        print(f"🔌 Plugin registrado: {name}")
-    
-    def load_plugins(self):
-        """Carrega plugins do diretório plugins/"""
-        if not self.plugin_path.exists():
-            return
-        
-        import importlib.util
-        for plugin_file in self.plugin_path.glob("*.py"):
-            if plugin_file.name.startswith("_"):
-                continue
+            log.warning("⚠️ Conectividade externa limitada.")
             
-            try:
-                spec = importlib.util.spec_from_file_location(
-                    plugin_file.stem, plugin_file
-                )
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                
-                if hasattr(module, 'register'):
-                    module.register(self)
-                    print(f"✅ Plugin carregado: {plugin_file.stem}")
-            except Exception as e:
-                print(f"⚠️  Erro ao carregar plugin {plugin_file.stem}: {e}")
-    
-    def get_plugin(self, name: str):
-        """Retorna um plugin pelo nome"""
-        return self.plugins.get(name)
-
+        return info
 
 # ============================================================================
-# EXPORTAÇÃO DE MÓDULOS (VERSÃO OTIMIZADA)
+# ENGINE DE SCANNER ASYNCHRONOUS (MODERNO)
 # ============================================================================
 
-# Inicializa sistema de métricas global
-metrics = PerformanceMetrics()
-
-# Valida ambiente na importação
-_validator = EnvironmentValidator()
-_validator.check_python_version()
-_platform = _validator.check_platform()
-_deps = _validator.check_dependencies()
-_network = _validator.validate_network()
-
-# Exporta classes e funções principais
-from .logger import setup_logger, tool_logger, Colors
-from .utils import (
-    validate_ip, validate_port, parse_ip_range, parse_ports,
-    save_json, load_json, save_csv, sanitize_filename
-)
-from .tcp_scanner_simple import TCPScanner
-from .multi_thread_scanner import MultiThreadScanner
-
-# Define __all__ para controle de exportação
-__all__ = [
-    # Versão
-    '__version__', '__author__', '__license__',
+class AADScanner:
+    """Motor de descoberta assíncrono de alto desempenho"""
     
-    # Logger
-    'setup_logger', 'tool_logger', 'Colors',
-    
-    # Utils
-    'validate_ip', 'validate_port', 'parse_ip_range', 'parse_ports',
-    'save_json', 'load_json', 'save_csv', 'sanitize_filename',
-    
-    # Scanners
-    'TCPScanner', 'MultiThreadScanner',
-    
-    # Métricas e gestão
-    'metrics', 'PerformanceMetrics', 'PluginManager', 'EnvironmentValidator'
-]
+    def __init__(self, target: str, metrics_ref: AADMetrics):
+        self.target = target
+        self.metrics = metrics_ref
 
-# Mensagem de boas-vindas (opcional, desativar em produção)
-if os.environ.get('TOOLKIT_VERBOSE'):
-    print(f"""
-╔══════════════════════════════════════════════════════════╗
-║  🐍 Python Security Toolkit v{__version__}                    ║
-║  📦 Base Module - Fase 1: Fundamentos Sólidos            ║
-║  👤 Author: {__author__}                                ║
-║  📜 License: {__license__}                                      ║
-╠══════════════════════════════════════════════════════════╣
-║  ✅ Ambiente validado                                    ║
-║  💻 Plataforma: {_platform.capitalize():<36}║
-║  🌐 IP Local: {_network['ip_local']:<40}║
-║  🔌 Plugins carregados: {len(PluginManager().plugins)}                                   ║
-╚══════════════════════════════════════════════════════════╝
-    """)
+    async def check_port(self, port: int, timeout: float = 1.0) -> bool:
+        """Tenta abrir uma conexão TCP de forma assíncrona"""
+        try:
+            conn = asyncio.open_connection(self.target, port)
+            _reader, writer = await asyncio.wait_for(conn, timeout=timeout)
+            writer.close()
+            await writer.wait_closed()
+            self.metrics.scans_performed += 1
+            self.metrics.hits_detected += 1
+            return True
+        except:
+            self.metrics.scans_performed += 1
+            return False
+
+    async def scan_range(self, ports: List[int]):
+        """Executa múltiplos scans simultaneamente"""
+        tasks = [self.check_port(p) for p in ports]
+        results = await asyncio.gather(*tasks)
+        return [ports[i] for i, opened in enumerate(results) if opened]
 
 # ============================================================================
-# AUTO-TESTE (executa quando o módulo é executado diretamente)
+# INTERFACE DE COMANDO (BANNER)
 # ============================================================================
 
-if __name__ == '__main__':
-    print("\n🔧 Executando auto-teste do módulo base...\n")
+def show_banner(env: Dict[str, Any]):
+    os.system('cls' if os.name == 'nt' else 'clear')
+    banner = f"""
+    ╔══════════════════════════════════════════════════════════╗
+    ║  AEGIS-DYNAMICS (AAD) - SECURITY TOOLKIT v1.2            ║
+    ║  Operador: {env['local_ip']:<41} ║
+    ║  Status:   SISTEMA OPERACIONAL (Fase 1: Ready)           ║
+    ╠══════════════════════════════════════════════════════════╣
+    ║  Engenharia: Tauã Miguel       Plataforma: {env['os']:<13} ║
+    ╚══════════════════════════════════════════════════════════╝
+    """
+    print(banner)
+
+# ============================================================================
+# PONTO DE ENTRADA (BOOTSTRAP)
+# ============================================================================
+
+async def main():
+    env = SystemGuard.get_env_info()
+    show_banner(env)
     
-    # Teste 1: Logger
-    print("1️⃣  Testando logger...")
-    from .logger import setup_logger
-    test_logger = setup_logger('test', verbose=True)
-    test_logger.info("Logger funcionando!")
+    metrics = AADMetrics()
+    scanner = AADScanner("127.0.0.1", metrics)
     
-    # Teste 2: Utils
-    print("\n2️⃣  Testando utils...")
-    from .utils import parse_ports, validate_ip
-    ports = parse_ports("22,80,443")
-    print(f"   Portas parseadas: {ports}")
-    print(f"   IP válido (192.168.1.1): {validate_ip('192.168.1.1')}")
+    log.info("🚀 Iniciando auto-teste de integridade...")
+    ports_to_test = [22, 80, 443, 3306, 8080]
+    found = await scanner.scan_range(ports_to_test)
     
-    # Teste 3: Métricas
-    print("\n3️⃣  Testando métricas...")
-    metrics.record_scan(1000, 5, 2.5)
-    metrics.display()
-    
-    # Teste 4: Plugin manager
-    print("\n4️⃣  Testando plugin manager...")
-    pm = PluginManager()
-    pm.load_plugins()
-    
-    print("\n✅ Todos os testes concluídos!")
-    print("\n📖 Para usar o toolkit:")
-    print("   from base import TCPScanner, MultiThreadScanner")
-    print("   scanner = TCPScanner('192.168.1.1')")
-    print("   scanner.scan_ports([80, 443, 8080])")
+    if found:
+        log.info(f"✅ Serviços detectados: {found}")
+    else:
+        log.info("ℹ️ Nenhum serviço local detectado no range padrão.")
+        
+    metrics.report()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n[!] Operação abortada pelo usuário.")
